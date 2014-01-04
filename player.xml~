@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
+<player>
+	<video>
+		<_videoList>
+			<source>movie/b.flv</source>
+			<source>movie/c.flv</source>
+		</_videoList>
+		<_smalldescrPlayList>
+			<source><![CDATA[bbb]]></source>
+			<source><![CDATA[ccc]]></source>
+		</_smalldescrPlayList>
+		<_smallthumbPlayList>
+			<source>movie/b2.png</source>
+			<source>movie/c2.png</source>
+		</_smallthumbPlayList>
+	</video>
+</player>

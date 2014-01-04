@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   applicationComplete="initApp()">
+	<fx:Script>
+		<![CDATA[
+			import avmplus.getQualifiedClassName;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.collections.IList;
+			import mx.controls.Alert;
+			import mx.controls.Image;
+			import mx.events.FlexEvent;
+			import mx.events.ResizeEvent;
+			import mx.managers.BrowserManager;
+			import mx.managers.IBrowserManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.URLUtil;
+			
+			import org.osmf.events.MediaPlayerStateChangeEvent;
+			import org.osmf.events.TimeEvent;
+			[Bindable] 
+			private var movieList:IList;
+			private var preIndex:int=0;
+			private var prePlayIndex:int=0;
+			[Bindable] 
+			private var imgW:int=120;
+			[Bindable] 
+			private var imgH:int=100;
+			[Bindable] 
+			private var defaultAlpha:Number=0.3;
+			[Bindable] 
+			private var lightAlpha:Number=1;
+			public function initApp():void{
+				container.width=stage.stageWidth;
+				container.height=stage.stageHeight;
+				movie.width=stage.stageWidth-imgW;
+				movie.height=stage.stageHeight;
+				httpService.url=root.loaderInfo.parameters.s;
+				httpService.send();
+			}
+			public function xmlLoadFaultHandler(event:FaultEvent):void{
+				Alert.show(event.fault.message,"load movie list failed!");
+			}
+			public function xmlLoadResultHandler(event:ResultEvent):void{
+				var temp:Object=httpService.lastResult;
+				movieList=new ArrayList();
+				var movieStr:String=null;
+				var smallthumbStr:String=null;
+				var titleStr:String=null;
+				if(temp.player.video._videoList.source is ArrayCollection){
+					for(var i:int=0;i<temp.player.video._videoList.source.length;i++){
+						movieStr=temp.player.video._videoList.source[i];
+						smallthumbStr=temp.player.video._smallthumbPlayList.source[i];
+						titleStr=temp.player.video._smalldescrPlayList.source[i];
+						movieList.addItem({"movie":movieStr,"smallthumb":smallthumbStr,"title":titleStr});
+					}
+				}else{
+					movieStr=temp.player.video._videoList.source;
+					smallthumbStr=temp.player.video._smallthumbPlayList.source;
+					titleStr=temp.player.video._smalldescrPlayList.source;
+					movieList.addItem({"movie":movieStr,"smallthumb":smallthumbStr,"title":titleStr});
+				}
+					imgList.dataProvider=movieList;
+				if(root.loaderInfo.parameters.autoplay=="false"){
+					movie.source=movieList.getItemAt(0).movie;
+					VBox(playList.getChildAt(0)).setStyle("backgroundColor",0x444444);
+					movie.stop();
+				}
+				if(root.loaderInfo.parameters.autoplay=="true"){
+					movie.source=movieList.getItemAt(0).movie;
+					VBox(playList.getChildAt(0)).setStyle("backgroundColor",0x444444);
+				}
+			}
+			
+			protected function samllImgHandler(event:MouseEvent):void
+			{
+				if(event.currentTarget as Image){
+					var image:Image=Image(event.currentTarget);
+					image.alpha=defaultAlpha;
+				}
+			}
+			
+			protected function bigImgHandler(event:MouseEvent):void
+			{
+				if(event.currentTarget as Image){
+					var image:Image=Image(event.currentTarget);
+					var preImg:Image=Image(VBox(playList.getChildAt(preIndex)).getChildAt(0));
+					if(image.tabIndex!=preIndex){
+						preImg.alpha=defaultAlpha;
+					}
+						preIndex=image.tabIndex;
+						image.alpha=lightAlpha;
+				}
+				
+			}
+			protected function changeMovieHandler(event:MouseEvent):void
+			{
+					var image:Image=Image(event.currentTarget);
+					if(prePlayIndex!=image.tabIndex){
+						VBox(playList.getChildAt(prePlayIndex)).setStyle("backgroundColor",0);
+					}
+					VBox(playList.getChildAt(image.tabIndex)).setStyle("backgroundColor",0x444444);
+					movie.source=imgList.dataProvider[image.tabIndex].movie;
+					prePlayIndex=image.tabIndex;
+			}
+			
+			
+			protected function resizeHandler(event:ResizeEvent):void
+			{
+				playList.height=movie.height;
+				
+			}
+			
+			protected function initImg(event:Event):void
+			{
+				var image:Image=Image(event.currentTarget);
+				image.addEventListener(MouseEvent.CLICK,changeMovieHandler);
+				image.addEventListener(MouseEvent.MOUSE_OUT,samllImgHandler);
+				image.addEventListener(MouseEvent.MOUSE_OVER,bigImgHandler);
+			}
+			
+			
+			protected function movie_completeHandler(event:TimeEvent):void
+			{
+				var index:int=(prePlayIndex+1)%IList(imgList.dataProvider).length;
+				var image:Image=Image(VBox(playList.getChildAt(index)).getChildAt(0));
+				var mouseEvent:MouseEvent=new MouseEvent("click");
+				image.dispatchEvent(mouseEvent);
+			}
+			
+			protected function image1_completeHandler(event:Event):void
+			{
+				var img:Bitmap=Bitmap(event.currentTarget.content)
+				img.smoothing=true;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:HTTPService id="httpService" fault="xmlLoadFaultHandler(event)"
+					   result="xmlLoadResultHandler(event)">
+		</s:HTTPService>
+	</fx:Declarations>
+	<s:HGroup id="container" gap="0" horizontalAlign="center" verticalAlign="middle">
+		<s:VGroup gap="0">
+			<s:VideoPlayer id="movie" complete="movie_completeHandler(event)"
+						   resize="resizeHandler(event)">
+			</s:VideoPlayer>
+		</s:VGroup>
+		<s:VGroup gap="0">
+			<mx:VBox id="playList" backgroundColor="0x000000" horizontalAlign="center"
+					 horizontalScrollPolicy="off">
+				<mx:Repeater id="imgList">
+					<mx:VBox width="{imgW}" horizontalAlign="center" verticalAlign="middle">
+						<mx:Image width="{imgW}" height="{imgH}" alpha="{defaultAlpha}"
+								  complete="image1_completeHandler(event)" horizontalAlign="center"
+								  initialize="initImg(event)" maintainAspectRatio="true"
+								  source="{imgList.currentItem.smallthumb}"
+								  tabIndex="{imgList.currentIndex}"
+								  toolTip="{imgList.currentItem.title}" verticalAlign="middle">
+						</mx:Image>
+					</mx:VBox>
+				</mx:Repeater>
+			</mx:VBox>
+		</s:VGroup>
+	</s:HGroup>
+	
+</s:Application>
